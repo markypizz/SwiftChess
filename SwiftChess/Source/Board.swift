@@ -21,7 +21,7 @@ public enum CastleSide {
 public struct Square: Equatable {
     
     public var piece: Piece?
-
+    
 }
 
 public func == (lhs: Square, rhs: Square) -> Bool {
@@ -64,12 +64,12 @@ extension Square: DictionaryRepresentable {
 // MARK: - ****** Board ******
 
 public struct Board: Equatable {
-        
+    
     public enum InitialState {
         case empty
         case newGame
     }
-
+    
     public private(set) var squares = [Square]()
     private var lastAssignedPieceTag = 0
     
@@ -95,12 +95,12 @@ public struct Board: Equatable {
             lastAssignedPieceTag += 1
             return Piece(type: type, color: color, tag: lastAssignedPieceTag)
         }
-
+        
         // Setup white bottom row
         for i in 0...7 {
             setPiece(makePiece(type: pieces[i], color: .white), at: BoardLocation(index: i))
         }
-
+        
         // Setup white pawn row
         for i in 8...15 {
             setPiece(makePiece(type: .pawn, color: .white), at: BoardLocation(index: i))
@@ -138,7 +138,7 @@ public struct Board: Equatable {
         if toLocation == fromLocation {
             return []
         }
-    
+        
         var operations = [BoardOperation]()
         
         guard let movingPiece = getPiece(at: fromLocation) else {
@@ -147,7 +147,7 @@ public struct Board: Equatable {
         
         let operation = BoardOperation(type: .movePiece, piece: movingPiece, location: toLocation)
         operations.append(operation)
-
+        
         if let targetPiece = getPiece(at: toLocation) {
             let operation = BoardOperation(type: .removePiece, piece: targetPiece, location: toLocation)
             operations.append(operation)
@@ -160,7 +160,7 @@ public struct Board: Equatable {
         
         // If the moving piece is a pawn, check whether it just made an en passent move, and remove the passed piece
         IF_EN_PASSANT: if movingPiece.type == .pawn {
-        
+            
             let stride = fromLocation.strideTo(location: toLocation)
             let enPassentStride = BoardStride(x: stride.x, y: 0)
             let enPassentLocation = fromLocation.incremented(by: enPassentStride)
@@ -203,9 +203,9 @@ public struct Board: Equatable {
     // MARK: - Get Specific pieces
     
     func getKing(color: Color) -> Piece {
-    
+        
         var king: Piece?
-    
+        
         for square in squares {
             
             guard let piece = square.piece else {
@@ -283,7 +283,7 @@ public struct Board: Equatable {
         let y: Int = (color == .white ? 7 : 0)
         
         for x in 0...7 {
-        
+            
             let location = BoardLocation(x: x, y: y)
             
             guard let piece = self.getPiece(at: location) else {
@@ -309,7 +309,7 @@ public struct Board: Equatable {
             guard let piece = getPiece(at: location) else {
                 continue
             }
-
+            
             if piece.color == color && piece.type == .king {
                 kingLocation = location
                 break
@@ -391,7 +391,7 @@ public struct Board: Equatable {
             for targetLocation in BoardLocation.all {
                 
                 let canMove = piece.movement.canPieceMove(from: pieceLocation, to: targetLocation, board: self)
-
+                
                 guard canMove == true else {
                     continue
                 }
@@ -416,7 +416,7 @@ public struct Board: Equatable {
             guard let piece = square.piece else {
                 continue
             }
-
+            
             if piece.color != color {
                 continue
             }
@@ -425,7 +425,7 @@ public struct Board: Equatable {
                 return true
             }
         }
- 
+        
         return false
     }
     
@@ -434,7 +434,7 @@ public struct Board: Equatable {
         guard let piece = getPiece(at: location) else {
             return false
         }
-
+        
         return (piece.color == color ? true : false)
     }
     
@@ -510,17 +510,17 @@ public struct Board: Equatable {
             }
         }
     }
-
+    
     public func canColorCastle(color: Color, side: CastleSide) -> Bool {
         
-       // Get the correct castle move
+        // Get the correct castle move
         let castleMove = CastleMove(color: color, side: side)
         
         // Get the pieces
         guard let kingPiece = getPiece(at: castleMove.kingStartLocation) else {
             return false
         }
-
+        
         guard let rookPiece = getPiece(at: castleMove.rookStartLocation) else {
             return false
         }
@@ -559,8 +559,8 @@ public struct Board: Equatable {
         // Check that king is not currently in check
         if isColorInCheck(color: color) {
             return false
-        }    
-  
+        }
+        
         // Check that the king will not end up in, or move through check
         let kStart = min(castleMove.kingEndXPos, castleMove.kingStartXPos)
         let kEnd = max(castleMove.kingEndXPos, castleMove.kingStartXPos)
@@ -587,7 +587,7 @@ public struct Board: Equatable {
                "\(color) is unable to castle on side \(side). Call canColorCastle(color: side:) first")
         
         let castleMove = CastleMove(color: color, side: side)
-    
+        
         let moveKingOperations = self.movePiece(from: castleMove.kingStartLocation,
                                                 to: castleMove.kingEndLocation)
         let moveRookOperations = self.movePiece(from: castleMove.rookStartLocation,
@@ -628,8 +628,35 @@ public struct Board: Equatable {
                     character = "G"
                 case .pawn:
                     character = "P"
-
+                    
                 }
+            }
+            return character
+        }
+    }
+    
+    public func printFenRepresentation() -> String {
+        return printBoardFen { (square: Square) -> Character? in
+            
+            var character: Character?
+            
+            if let piece = square.piece {
+                
+                switch piece.type {
+                case .rook:
+                    character = piece.color == .white ? "R" : "r"
+                case .knight:
+                    character = piece.color == .white ? "N" : "n"
+                case .bishop:
+                    character = piece.color == .white ? "B" : "b"
+                case .queen:
+                    character = piece.color == .white ? "Q" : "q"
+                case .king:
+                    character = piece.color == .white ? "K" : "k"
+                case .pawn:
+                    character = piece.color == .white ? "P" : "p"
+                }
+                
             }
             return character
         }
@@ -678,6 +705,41 @@ public struct Board: Equatable {
         }
         
         print(printString)
+    }
+    
+    func printBoardFen( _ squarePrinter: (Square) -> Character? ) -> String {
+        
+        var printString = String()
+        var currentSpaces = 0
+        
+        for y in  (0...7).reversed() {
+            for x in 0...7 {
+                
+                let index = y*8 + x
+                let character = squarePrinter(squares[index])
+                
+                if (character != nil) {
+                    if (currentSpaces != 0) {
+                        printString.append(String(currentSpaces))
+                        currentSpaces = 0
+                    }
+                    printString.append(character!)
+                } else {
+                    currentSpaces += 1
+                }
+            }
+            
+            if (currentSpaces != 0) {
+                printString.append(String(currentSpaces))
+                currentSpaces = 0
+            }
+            
+            if (y != 0) {
+                printString.append(Character("/"))
+            }
+        }
+        
+        return printString
     }
 }
 
