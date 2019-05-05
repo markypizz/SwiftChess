@@ -45,16 +45,16 @@ public final class AIPlayer: Player {
     }
     
     public func makeMoveSync() {
-        
-        //print("\n\n****** Make Move ******");
-        
         // Check that the game is in progress
-        guard game.state == .inProgress else {
+        guard game != nil || game.state == .inProgress else {
+            game.lock.unlock()
             return
         }
         
+        game.lock.lock()
+        
         let board = game.board
-                
+        
         var move: Move!
         
         // Get an opening move
@@ -62,7 +62,7 @@ public final class AIPlayer: Player {
             //print("Playing opening move")
             move = openingMove
         }
-        // Or, get the Highest rated move
+            // Or, get the Highest rated move
         else {
             move = highestRatedMove(on: board)
         }
@@ -90,6 +90,7 @@ public final class AIPlayer: Player {
             operations.append(transformOperation)
         }
         
+        game.lock.unlock()
         let strongGame = self.game!
         DispatchQueue.main.async {
             strongGame.playerDidMakeMove(player: self, boardOperations: operations)
@@ -110,8 +111,7 @@ public final class AIPlayer: Player {
         let openingMove = possibleMoves[index]
         
         return Move(type: .singlePiece(from: openingMove.fromLocation,
-                                       to: openingMove.toLocation),
-                                       rating: 0)
+                                       to: openingMove.toLocation), rating: 0)
     }
     
     func highestRatedMove(on board: Board) -> Move {
@@ -156,7 +156,7 @@ public final class AIPlayer: Player {
                 let move = Move(type: .singlePiece(from: sourceLocation, to: targetLocation),
                                 rating: rating)
                 possibleMoves.append(move)
-               // print("Rating: \(rating)")
+                // print("Rating: \(rating)")
             }
         }
         
@@ -264,7 +264,7 @@ public final class AIPlayer: Player {
             
             let newPiece = newBoard.getPiece(at: location)?.byChangingType(newType: pieceType)
             newBoard.setPiece(newPiece!, at: location)
-
+            
             let rating = ratingForBoard(newBoard)
             
             if rating > highestRating {
@@ -333,7 +333,7 @@ internal class BoardRater {
     init(configuration: AIConfiguration) {
         self.configuration = configuration
     }
-
+    
     func ratingFor(board: Board, color: Color) -> Double {
         fatalError("Override ratingFor method in subclasses")
     }

@@ -15,6 +15,7 @@ public final class Game {
         case inProgress
         case staleMate(color: Color)
         case won(color: Color)
+        case aborted
         
         public static func == (lhs: State, rhs: State) -> Bool {
             switch (lhs, rhs) {
@@ -35,17 +36,18 @@ public final class Game {
         case humanVsComputer
         case computerVsComputer
     }
-
+    
     // MARK: Properties
     public internal(set) var board: Board
     public let whitePlayer: Player!
     public let blackPlayer: Player!
     public internal(set) var currentPlayer: Player!
-    public internal(set) var state = Game.State.inProgress
+    public var state = Game.State.inProgress
     public weak var delegate: GameDelegate?
+    public var lock : NSLock
     
     public var gameType: GameType {
-    
+        
         switch (self.whitePlayer, self.blackPlayer) {
         case (is Human, is Human):
             return .humanVsHuman
@@ -72,6 +74,8 @@ public final class Game {
         self.whitePlayer = firstPlayer.color == .white ? firstPlayer : secondPlayer
         self.blackPlayer = firstPlayer.color == .black ? firstPlayer : secondPlayer
         
+        lock = NSLock()
+        
         // Setup Players
         self.whitePlayer.delegate = self
         self.blackPlayer.delegate = self
@@ -84,7 +88,7 @@ public final class Game {
 
 // MARK: - Game : PlayerDelegate
 extension Game: PlayerDelegate {
-
+    
     func playerDidMakeMove(player: Player, boardOperations: [BoardOperation]) {
         
         // This shouldn't happen, but we'll print a message in case it does
@@ -146,7 +150,7 @@ extension Game: PlayerDelegate {
             }
             
         }
-   
+        
     }
     
 }
@@ -200,6 +204,8 @@ extension Game.State: DictionaryRepresentable {
         case .won(let color):
             dictionary[Keys.type] = Keys.type_won
             dictionary[Keys.color] = color.rawValue
+        default: break
+            // Don't need to do anything for aborted game
         }
         
         return dictionary
@@ -220,7 +226,7 @@ extension Game: DictionaryRepresentable {
         static let blackPlayer = "PlayerTwo"
         static let currentPlayerColor = "currentPlayerColor"
     }
-
+    
     public convenience init?(dictionary: [String: Any]) {
         
         // State
@@ -253,7 +259,7 @@ extension Game: DictionaryRepresentable {
         guard let whitePlayerType = dictionary[Keys.whitePlayerType] as? String,
             let whitePlayerDict = dictionary[Keys.whitePlayer] as? [String: Any],
             let whitePlayer = makePlayer(type: whitePlayerType, dictionary: whitePlayerDict) else {
-            return nil
+                return nil
         }
         
         // Black Player
@@ -270,7 +276,7 @@ extension Game: DictionaryRepresentable {
     }
     
     public var dictionaryRepresentation: [String: Any] {
-
+        
         var dictionary = [String: Any]()
         dictionary[Keys.state] = state.dictionaryRepresentation
         dictionary[Keys.gameType] = gameType.rawValue
